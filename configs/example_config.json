@@ -1,0 +1,21 @@
+{
+	"questsItemCounterMultipliers" : {
+		"questId1" : 1,
+		"questId2" : 1
+	},
+
+	"questsKillsCounterMultipliers" : {
+		"questId1" : 1,
+		"questId2" : 1
+	},
+
+	"questsCultistsKillsCounterMultipliers" : {
+		"questId1" : 1,
+		"questId2" : 1
+	},
+
+	"questsLevelRequirements" : {
+		"questId1" : 1,
+		"questId2" : 1
+	}
+}
