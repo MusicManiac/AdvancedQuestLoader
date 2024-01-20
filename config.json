@@ -10,6 +10,8 @@
 		"show_Equipment_Used_By_Each_Condition" : false,
 		"show_Items_Multipliers_Being_Applied" : false,
 		"show_Kills_Multipliers_Being_Applied" : false,
-		"show_Levels_Requirements_Being_Applied" : false
+		"show_Levels_Requirements_Being_Applied" : false,
+
+		"show_Files_Processing": false
 	}
 }

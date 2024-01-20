@@ -269,32 +269,33 @@ class MMCQL implements IPostDBLoadMod {
 
     public accumulateConfigs() {
         let questConfigsRead = 0;
-    
+        let modShortName = this.modShortName;
         this.loadFiles(`${modPath}/configs/`, [".json"], (filePath) => {
-            console.log("Processing file:", filePath);
-    
+            if (MMCQLconfig.debug.show_Files_Processing) {
+                console.log(`[${modShortName}] Processing file:`, filePath); 
+            }
             try {
                 const questsFile = require(filePath);
     
                 // Check if the required properties exist in the JSON data
                 if (questsFile.questsItemCounterMultipliers && Object.keys(questsFile.questsItemCounterMultipliers).length > 0) {
                     this.questConfigs.questsItemCounterMultipliers = {...this.questConfigs.questsItemCounterMultipliers, ...questsFile.questsItemCounterMultipliers};
-                    console.log("questsItemCounterMultipliers:", questsFile.questsItemCounterMultipliers);
+                    //console.log("questsItemCounterMultipliers:", questsFile.questsItemCounterMultipliers);
                 }
     
                 if (questsFile.questsKillsCounterMultipliers && Object.keys(questsFile.questsKillsCounterMultipliers).length > 0) {
                     this.questConfigs.questsKillsCounterMultipliers = {...this.questConfigs.questsKillsCounterMultipliers, ...questsFile.questsKillsCounterMultipliers};
-                    console.log("questsKillsCounterMultipliers:", questsFile.questsKillsCounterMultipliers);
+                    //console.log("questsKillsCounterMultipliers:", questsFile.questsKillsCounterMultipliers);
                 }
     
                 if (questsFile.questsCultistsKillsCounterMultipliers && Object.keys(questsFile.questsCultistsKillsCounterMultipliers).length > 0) {
                     this.questConfigs.questsCultistsKillsCounterMultipliers = {...this.questConfigs.questsCultistsKillsCounterMultipliers, ...questsFile.questsCultistsKillsCounterMultipliers};
-                    console.log("questsCultistsKillsCounterMultipliers:", questsFile.questsCultistsKillsCounterMultipliers);
+                    //console.log("questsCultistsKillsCounterMultipliers:", questsFile.questsCultistsKillsCounterMultipliers);
                 }
     
                 if (questsFile.questsLevelRequirements && Object.keys(questsFile.questsLevelRequirements).length > 0) {
                     this.questConfigs.questsLevelRequirements = {...this.questConfigs.questsLevelRequirements, ...questsFile.questsLevelRequirements};
-                    console.log("questsLevelRequirements:", questsFile.questsLevelRequirements);
+                    //console.log("questsLevelRequirements:", questsFile.questsLevelRequirements);
                 }
                 questConfigsRead++;
             } catch (error) {
@@ -302,7 +303,7 @@ class MMCQL implements IPostDBLoadMod {
             }
         });
     
-        console.log("questConfigs:", this.questConfigs);
+        //console.log("questConfigs:", this.questConfigs);
         console.log(`[${this.modShortName}] Loaded ${questConfigsRead} quest config files.`);
     }
 
@@ -333,105 +334,107 @@ class MMCQL implements IPostDBLoadMod {
 
         this.loadFiles(`${modPath}/database/quests/`, [".json"], function(filePath) {
             const questsFile = require(filePath)
-            console.log("Processing file:", filePath);
+            if (MMCQLconfig.debug.show_Files_Processing) {
+                console.log(`[${modShortName}] Processing file:`, filePath); 
+            }
             if (Object.keys(questsFile).length < 1) return 
             for (const quest of Object.keys(questsFile)) {
                 const questContent = questsFile[quest]
-                console.log(`Processing quest: \`${questContent._id}\'`)
-                    //process quest condition configuration options
-                    for (const nextCondition of questContent.conditions.AvailableForFinish) {
-                        const nextConditionData = nextCondition;
-                        if (nextConditionData._parent == "CounterCreator" && nextConditionData._props.counter.id == "thisIsSetInCode") {
-                            nextConditionData._props.counter.id = nextConditionData._props.id + " counterId"
-                            if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
-                                logger.info(`[${modShortName}] Setting \`${questContent._id}\' subCondition \`${nextConditionData._props.id}\` counter id to \`${nextConditionData._props.counter.id}\``);
-                            }
+                //console.log(`Processing quest: \`${questContent._id}\'`)
+                //process quest condition configuration options
+                for (const nextCondition of questContent.conditions.AvailableForFinish) {
+                    const nextConditionData = nextCondition;
+                    if (nextConditionData._parent == "CounterCreator" && nextConditionData._props.counter.id == "thisIsSetInCode") {
+                        nextConditionData._props.counter.id = nextConditionData._props.id + " counterId"
+                        if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                            logger.info(`[${modShortName}] Setting \`${questContent._id}\' subCondition \`${nextConditionData._props.id}\` counter id to \`${nextConditionData._props.counter.id}\``);
                         }
-                        if (nextConditionData._parent == "CounterCreator" && nextConditionData._props.type == "Elimination") {
-                            let counterElimination = 0;
-                            let cultistsIncluded = false;
-                            for (const subCondition of nextConditionData._props.counter.conditions) {
-                                const subConditionData = subCondition;
-                                if (subConditionData.id == "thisIsRandomizedInCode") {
-                                    subConditionData.id = Math.random().toString(36).substring(2, 20);
-                                    if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
-                                        logger.info(`[${modShortName}] Setting \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} id to \`${subConditionData.id}\``);
-                                    }
-                                }
-                                // replace Kills properties
-                                if (subConditionData._parent == "Kills") {
-                                    if (subConditionData._props.savageRole && subConditionData._props.savageRole.includes("sectantWarrior")) {
-                                        cultistsIncluded = true;
-                                    }
-                                    if (Array.isArray(subConditionData._props.weapon)) {
-                                        parseWeapons(subConditionData, weaponArrays, logger, modShortName, questContent, nextConditionData, counterElimination);
-                                    }
-                                    if (Array.isArray(subConditionData._props.weaponModsInclusive)) {
-                                        parseWeaponModsInclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
-                                    }
-                                    if (Array.isArray(subConditionData._props.weaponModsExclusive)) {
-                                        parseWeaponModsExclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
-                                    }
-                                    if (Array.isArray(subConditionData._props.equipmentInclusive)) {
-                                        parseEquipmentInclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
-                                    }
-                                    if (Array.isArray(subConditionData._props.equipmentExclusive)) {
-                                        parseEquipmentExclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
-                                    }
-                                }
-                                counterElimination++;
-                            }
-                            const initialValue = nextConditionData._props.value;
-                            if (cultistsIncluded && questConfigs.questsCultistsKillsCounterMultipliers.hasOwnProperty(questContent._id)) {
-                                const multiplier = questConfigs.questsCultistsKillsCounterMultipliers[questContent._id];
-                                nextConditionData._props.value *= multiplier;
-                                nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
-                                if (config.show_Kills_Multipliers_Being_Applied) {
-                                    logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
-                                }
-                            } else if (questConfigs.questsKillsCounterMultipliers.hasOwnProperty(questContent._id)) {
-                                const multiplier = questConfigs.questsKillsCounterMultipliers[questContent._id];
-                                nextConditionData._props.value *= multiplier;
-                                nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
-                                if (config.show_Kills_Multipliers_Being_Applied) {
-                                    logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
+                    }
+                    if (nextConditionData._parent == "CounterCreator" && nextConditionData._props.type == "Elimination") {
+                        let counterElimination = 0;
+                        let cultistsIncluded = false;
+                        for (const subCondition of nextConditionData._props.counter.conditions) {
+                            const subConditionData = subCondition;
+                            if (subConditionData.id == "thisIsRandomizedInCode") {
+                                subConditionData.id = Math.random().toString(36).substring(2, 20);
+                                if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                                    logger.info(`[${modShortName}] Setting \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} id to \`${subConditionData.id}\``);
                                 }
                             }
+                            // replace Kills properties
+                            if (subConditionData._parent == "Kills") {
+                                if (subConditionData._props.savageRole && subConditionData._props.savageRole.includes("sectantWarrior")) {
+                                    cultistsIncluded = true;
+                                }
+                                if (Array.isArray(subConditionData._props.weapon)) {
+                                    parseWeapons(subConditionData, weaponArrays, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                }
+                                if (Array.isArray(subConditionData._props.weaponModsInclusive)) {
+                                    parseWeaponModsInclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                }
+                                if (Array.isArray(subConditionData._props.weaponModsExclusive)) {
+                                    parseWeaponModsExclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                }
+                                if (Array.isArray(subConditionData._props.equipmentInclusive)) {
+                                    parseEquipmentInclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                }
+                                if (Array.isArray(subConditionData._props.equipmentExclusive)) {
+                                    parseEquipmentExclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                }
+                            }
+                            counterElimination++;
                         }
-                        if (nextConditionData._parent == "HandoverItem") {
-                            const initialValue = nextConditionData._props.value; 
-                            if (questConfigs.questsItemCounterMultipliers.hasOwnProperty(questContent._id)) {
-                                const multiplier = questConfigs.questsItemCounterMultipliers[questContent._id];
-                                nextConditionData._props.value *= multiplier;
-                                nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
-                                if (config.show_Items_Multipliers_Being_Applied) {
-                                    logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
-                                }
+                        const initialValue = nextConditionData._props.value;
+                        if (cultistsIncluded && questConfigs.questsCultistsKillsCounterMultipliers.hasOwnProperty(questContent._id)) {
+                            const multiplier = questConfigs.questsCultistsKillsCounterMultipliers[questContent._id];
+                            nextConditionData._props.value *= multiplier;
+                            nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
+                            if (config.show_Kills_Multipliers_Being_Applied) {
+                                logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
                             }
-                            if (Array.isArray(nextConditionData._props.target)) {
-                                parseHandoverItems(nextConditionData, weaponPartsAndMods, logger, modShortName, questContent, equipmentLists, weaponArrays);
+                        } else if (questConfigs.questsKillsCounterMultipliers.hasOwnProperty(questContent._id)) {
+                            const multiplier = questConfigs.questsKillsCounterMultipliers[questContent._id];
+                            nextConditionData._props.value *= multiplier;
+                            nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
+                            if (config.show_Kills_Multipliers_Being_Applied) {
+                                logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
                             }
                         }
                     }
+                    if (nextConditionData._parent == "HandoverItem") {
+                        const initialValue = nextConditionData._props.value; 
+                        if (questConfigs.questsItemCounterMultipliers.hasOwnProperty(questContent._id)) {
+                            const multiplier = questConfigs.questsItemCounterMultipliers[questContent._id];
+                            nextConditionData._props.value *= multiplier;
+                            nextConditionData._props.value = Math.ceil(nextConditionData._props.value);
+                            if (config.show_Items_Multipliers_Being_Applied) {
+                                logger.info(`[${modShortName}] applying multiplier from config to quest \`${questContent._id}\`: ${initialValue} * ${multiplier} = ${nextConditionData._props.value}`);
+                            }
+                        }
+                        if (Array.isArray(nextConditionData._props.target)) {
+                            parseHandoverItems(nextConditionData, weaponPartsAndMods, logger, modShortName, questContent, equipmentLists, weaponArrays);
+                        }
+                    }
+                }
 
-                    for (const nextCondition of questContent.conditions.AvailableForStart) {
-                        const nextConditionData = nextCondition;
-                        const randomString = Math.random().toString(36).substring(2, 20);
-                        if (nextConditionData._parent == "Level" && nextConditionData._props.id == "thisIsRandomizedInCode") {
-                            nextConditionData._props.id = randomString;
-                            if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
-                                logger.info(`[${modShortName}] Setting \`${questContent._id}\' starting level condition id to \`${nextConditionData._props.id}\``);
-                            }
-                            if (questConfigs.questsLevelRequirements.hasOwnProperty(questContent._id)) {
-                                nextConditionData._props.value = questConfigs.questsLevelRequirements[questContent._id];
-                            }
-                        } else if (nextConditionData._parent == "Quest") {
-                            nextConditionData._props.id = randomString;
-                            if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
-                                logger.info(`[${modShortName}] Setting \`${questContent._id}\' quest completion check id to \`${nextConditionData._props.id}\``);
-                            }
+                for (const nextCondition of questContent.conditions.AvailableForStart) {
+                    const nextConditionData = nextCondition;
+                    const randomString = Math.random().toString(36).substring(2, 20);
+                    if (nextConditionData._parent == "Level" && nextConditionData._props.id == "thisIsRandomizedInCode") {
+                        nextConditionData._props.id = randomString;
+                        if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                            logger.info(`[${modShortName}] Setting \`${questContent._id}\' starting level condition id to \`${nextConditionData._props.id}\``);
+                        }
+                        if (questConfigs.questsLevelRequirements.hasOwnProperty(questContent._id)) {
+                            nextConditionData._props.value = questConfigs.questsLevelRequirements[questContent._id];
+                        }
+                    } else if (nextConditionData._parent == "Quest") {
+                        nextConditionData._props.id = randomString;
+                        if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                            logger.info(`[${modShortName}] Setting \`${questContent._id}\' quest completion check id to \`${nextConditionData._props.id}\``);
                         }
                     }
+                }
                 if (questsFile[quest].side == "Usec") config.usecOnlyQuests.push(quest)
                 if (questsFile[quest].side == "Bear") config.bearOnlyQuests.push(quest)
                 questsFile[quest].side = "Pmc"
