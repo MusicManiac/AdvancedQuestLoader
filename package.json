@@ -1,6 +1,6 @@
 {
-    "name": "MusicManiac Custom Quest Loader",
-    "version":"1.0.1",
+    "name": "MusicManiacs Advanced Quest Loader",
+    "version":"1.1.0",
     "main": "src/mod.js",
     "license": "MIT",
     "author": "MusicManiac",
