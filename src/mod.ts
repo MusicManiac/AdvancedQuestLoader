@@ -52,9 +52,6 @@ class MMAQL implements IPostDBLoadMod {
         this.importQuests(database, config, `${modPath}/database/quests/`);
         this.importLocales(database, `${modPath}/database/locales/`);
         this.routeImages(imageRouter, `${modPath}/res/quests/`);
-        console.log()
-        
-        console.log("questConfigs:", this.questConfigs);
     }
 
     public configureCategories(itemDB) {
