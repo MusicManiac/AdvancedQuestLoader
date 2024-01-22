@@ -10,7 +10,7 @@ import { BaseClasses } from  "@spt-aki/models/enums/BaseClasses";
 import * as path from "path";
 const fs = require('fs');
 const modPath = path.normalize(path.join(__dirname, '..'));
-import * as MMCQLconfig from "../config.json"
+import * as MMAQLconfig from "../config.json"
 
 class MMAQL implements IPostDBLoadMod {
 
@@ -104,6 +104,20 @@ class MMAQL implements IPostDBLoadMod {
         });
 
         this.parseItemsDatabase(itemDB);
+
+        if (MMAQLconfig.debug.show_All_Categories_And_Things_In_Them) {
+            weaponCategories.forEach(category => {
+                console.log(`Items in category ${category}:`, JSON.stringify((this.weaponArrays[category]));
+            });
+    
+            weaponPartsAndModsCategories.forEach(category => {
+                console.log(`Items in category ${category}:`, JSON.stringify(this.weaponPartsAndMods[category]));
+            });
+    
+            equipmentsCategories.forEach(category => {
+                console.log(`Items in category ${category}:`, JSON.stringify(this.equipmentLists[category]));
+            });
+        }     
     }
 
     public parseItemsDatabase(itemDB) {
@@ -279,7 +293,7 @@ class MMAQL implements IPostDBLoadMod {
                 if (stat.isDirectory()) {
                     traverse(filePath);
                 } else if (path.extname(filePath).toLowerCase() === '.json') {
-                    if (MMCQLconfig.debug.show_Files_Processing) {
+                    if (MMAQLconfig.debug.show_Files_Processing) {
                         console.log(`[${modShortName}] Processing file:`, filePath); 
                     }
                     try {
@@ -340,7 +354,7 @@ class MMAQL implements IPostDBLoadMod {
                     try {
                         const fileContent = fs.readFileSync(filePath, 'utf-8');
                         const questsFile = JSON.parse(fileContent);
-                        if (MMCQLconfig.debug.show_Files_Processing) {
+                        if (MMAQLconfig.debug.show_Files_Processing) {
                             console.log(`[${modShortName}] Processing file:`, filePath); 
                         }
                         if (Object.keys(questsFile).length < 1) return 
@@ -352,7 +366,7 @@ class MMAQL implements IPostDBLoadMod {
                                 const nextConditionData = nextCondition;
                                 if (nextConditionData._parent == "CounterCreator" && nextConditionData._props.counter.id == "thisIsSetInCode") {
                                     nextConditionData._props.counter.id = nextConditionData._props.id + " counterId"
-                                    if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                                    if (MMAQLconfig.debug.show_Quest_Ids_Set_By_Code) {
                                         logger.info(`[${modShortName}] Setting \`${questContent._id}\' subCondition \`${nextConditionData._props.id}\` counter id to \`${nextConditionData._props.counter.id}\``);
                                     }
                                 }
@@ -363,7 +377,7 @@ class MMAQL implements IPostDBLoadMod {
                                         const subConditionData = subCondition;
                                         if (subConditionData.id == "thisIsRandomizedInCode") {
                                             subConditionData.id = Math.random().toString(36).substring(2, 20);
-                                            if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                                            if (MMAQLconfig.debug.show_Quest_Ids_Set_By_Code) {
                                                 logger.info(`[${modShortName}] Setting \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} id to \`${subConditionData.id}\``);
                                             }
                                         }
@@ -374,18 +388,33 @@ class MMAQL implements IPostDBLoadMod {
                                             }
                                             if (Array.isArray(subConditionData._props.weapon)) {
                                                 parseWeapons(subConditionData, weaponArrays, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                                if (subConditionData._props.weapon.length === 0) {
+                                                    logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weapon array is empty!`);
+                                                }
                                             }
                                             if (Array.isArray(subConditionData._props.weaponModsInclusive)) {
                                                 parseWeaponModsInclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                                if (subConditionData._props.weaponModsInclusive.length === 0) {
+                                                    logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weaponModsInclusive array is empty!`);
+                                                }
                                             }
                                             if (Array.isArray(subConditionData._props.weaponModsExclusive)) {
                                                 parseWeaponModsExclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                                if (subConditionData._props.weaponModsExclusive.length === 0) {
+                                                    logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weaponModsExclusive array is empty!`);
+                                                }
                                             }
                                             if (Array.isArray(subConditionData._props.equipmentInclusive)) {
                                                 parseEquipmentInclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                                if (subConditionData._props.equipmentInclusive.length === 0) {
+                                                    logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} equipmentInclusive array is empty!`);
+                                                }
                                             }
                                             if (Array.isArray(subConditionData._props.equipmentExclusive)) {
                                                 parseEquipmentExclusive(subConditionData, equipmentLists, logger, modShortName, questContent, nextConditionData, counterElimination);
+                                                if (subConditionData._props.equipmentExclusive.length === 0) {
+                                                    logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} equipmentExclusive array is empty!`);
+                                                }
                                             }
                                         }
                                         counterElimination++;
@@ -428,7 +457,7 @@ class MMAQL implements IPostDBLoadMod {
                                 const randomString = Math.random().toString(36).substring(2, 20);
                                 if (nextConditionData._parent == "Level" && nextConditionData._props.id == "thisIsRandomizedInCode") {
                                     nextConditionData._props.id = randomString;
-                                    if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                                    if (MMAQLconfig.debug.show_Quest_Ids_Set_By_Code) {
                                         logger.info(`[${modShortName}] Setting \`${questContent._id}\' starting level condition id to \`${nextConditionData._props.id}\``);
                                     }
                                     if (questConfigs.questsLevelRequirements.hasOwnProperty(questContent._id)) {
@@ -436,7 +465,7 @@ class MMAQL implements IPostDBLoadMod {
                                     }
                                 } else if (nextConditionData._parent == "Quest" && nextConditionData._props.id == "thisIsRandomizedInCode") {
                                     nextConditionData._props.id = randomString;
-                                    if (MMCQLconfig.debug.show_Quest_Ids_Set_By_Code) {
+                                    if (MMAQLconfig.debug.show_Quest_Ids_Set_By_Code) {
                                         logger.info(`[${modShortName}] Setting \`${questContent._id}\' quest completion check id to \`${nextConditionData._props.id}\``);
                                     }
                                 }
@@ -454,11 +483,7 @@ class MMAQL implements IPostDBLoadMod {
             });
         }    
         traverse(directoryPath);
-
-        // this.loadFiles(`${modPath}/database/quests/`, [".json"], function(filePath) {
-        //     const questsFile = require(filePath)
-            
-        // })
+        
         logger.success(`[${modShortName}] Loaded ${questCount} custom quests.`)
     }
 
@@ -471,7 +496,7 @@ class MMAQL implements IPostDBLoadMod {
                     const equipmentArray = equipmentLists[equipment];
                     // Concatenate each ID into a separate array
                     const separatedArrays = equipmentArray.map(equipmentId => [equipmentId]);
-                    if (MMCQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
+                    if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
                         logger.info(`[${modShortName}] replacing \`${equipment}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
                     }
                     // Concatenate the arrays into the accumulator
@@ -481,7 +506,7 @@ class MMAQL implements IPostDBLoadMod {
                     return acc.concat([[equipment]]);
                 }
             }, []);
-            if (MMCQLconfig.debug.show_Equipment_Used_By_Each_Condition) {
+            if (MMAQLconfig.debug.show_Equipment_Used_By_Each_Condition) {
                 logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` excluded equipment list: ${JSON.stringify(subConditionData._props.equipmentExclusive)}`);
             }
         }
@@ -496,7 +521,7 @@ class MMAQL implements IPostDBLoadMod {
                     const equipmentArray = equipmentLists[equipment];
                     // Concatenate each ID into a separate array
                     const separatedArrays = equipmentArray.map(equipmentId => [equipmentId]);
-                    if (MMCQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
+                    if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
                         logger.info(`[${modShortName}] replacing \`${equipment}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
                     }
                     // Concatenate the arrays into the accumulator
@@ -506,7 +531,7 @@ class MMAQL implements IPostDBLoadMod {
                     return acc.concat([[equipment]]);
                 }
             }, []);
-            if (MMCQLconfig.debug.show_Equipment_Used_By_Each_Condition) {
+            if (MMAQLconfig.debug.show_Equipment_Used_By_Each_Condition) {
                 logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` included equipment list: ${JSON.stringify(subConditionData._props.equipmentInclusive)}`);
             }
         }
@@ -517,19 +542,19 @@ class MMAQL implements IPostDBLoadMod {
             // Check for categories across all our categories groups
             if (weaponPartsAndMods.hasOwnProperty(category)) {
                 // Concatenate the corresponding array from weaponPartsAndMods
-                if (MMCQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
+                if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
                     logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
                 }
                 return acc.concat(weaponPartsAndMods[category]);
             } else if (equipmentLists.hasOwnProperty(category)) {
                 // Concatenate the corresponding array from equipmentLists
-                if (MMCQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
+                if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
                     logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
                 }
                 return acc.concat(equipmentLists[category]);
             } else if (weaponArrays.hasOwnProperty(category)) {
                 // Concatenate the corresponding array from weaponArrays
-                if (MMCQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
+                if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
                     logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
                 }
                 return acc.concat(weaponArrays[category]);
@@ -538,7 +563,7 @@ class MMAQL implements IPostDBLoadMod {
                 return acc.concat(category);
             }
         }, []);
-        if (MMCQLconfig.debug.show_Equipment_Used_By_Each_Condition || MMCQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition || MMCQLconfig.debug.show_Weapons_Used_By_Each_Condition) {
+        if (MMAQLconfig.debug.show_Equipment_Used_By_Each_Condition || MMAQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition || MMAQLconfig.debug.show_Weapons_Used_By_Each_Condition) {
             logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` items/mods/weapons/ids: ${JSON.stringify(nextConditionData._props.target)}`);
         }
     }
@@ -548,7 +573,7 @@ class MMAQL implements IPostDBLoadMod {
             // Check if the weaponId is a key in weaponArrays
             if (weaponArrays.hasOwnProperty(weaponId)) {
                 // Concatenate the corresponding array from weaponArrays
-                if (MMCQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
+                if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
                     logger.info(`[${modShortName}] replacing \`${weaponId}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
                 }
                 return acc.concat(weaponArrays[weaponId]);
@@ -557,7 +582,7 @@ class MMAQL implements IPostDBLoadMod {
                 return acc.concat(weaponId);
             }
         }, []);
-        if (MMCQLconfig.debug.show_Weapons_Used_By_Each_Condition) {
+        if (MMAQLconfig.debug.show_Weapons_Used_By_Each_Condition) {
             logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` required weapons: ${JSON.stringify(subConditionData._props.weapon)}`);
         }
     }
@@ -571,7 +596,7 @@ class MMAQL implements IPostDBLoadMod {
                     const modsArray = weaponPartsAndMods[weaponMods];
                     // Concatenate each ID into a separate array
                     const separatedArrays = modsArray.map(modId => [modId]);
-                    if (MMCQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
+                    if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
                         logger.info(`[${modShortName}] replacing \`${weaponMods}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
                     }
                     // Concatenate the arrays into the accumulator
@@ -581,7 +606,7 @@ class MMAQL implements IPostDBLoadMod {
                     return acc.concat([[weaponMods]]);
                 }
             }, []);
-            if (MMCQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition) {
+            if (MMAQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition) {
                 logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` excluded weapon mods: ${JSON.stringify(subConditionData._props.weaponModsInclusive)}`);
             }
         }
@@ -594,7 +619,7 @@ class MMAQL implements IPostDBLoadMod {
                 if (weaponPartsAndMods.hasOwnProperty(weaponMods)) {
                     const modsArray = weaponPartsAndMods[weaponMods];
                     const separatedArrays = modsArray.map(modId => [modId]);
-                    if (MMCQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
+                    if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
                         logger.info(`[${modShortName}] replacing \`${weaponMods}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
                     }
                     return acc.concat(separatedArrays);
@@ -604,7 +629,7 @@ class MMAQL implements IPostDBLoadMod {
             }, []);
         }
 
-        if (MMCQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition) {
+        if (MMAQLconfig.debug.show_Weapon_Mods_Used_By_Each_Condition) {
             logger.info(`\`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` included weapon mods: ${JSON.stringify(subConditionData._props.weaponModsInclusive)}`);
         }
     }
@@ -623,7 +648,7 @@ class MMAQL implements IPostDBLoadMod {
                     if (stat.isDirectory()) {
                         traverse(filePath);
                     } else if (path.extname(filePath).toLowerCase() === '.json') {
-                        if (MMCQLconfig.debug.show_Files_Processing) {
+                        if (MMAQLconfig.debug.show_Files_Processing) {
                             console.log(`[${modShortName}] Processing file:`, filePath);
                         }
                         try {
@@ -665,7 +690,7 @@ class MMAQL implements IPostDBLoadMod {
                 if (stat.isDirectory()) {
                     traverse(filePath);
                 } else if (path.extname(filePath).toLowerCase() === '.png' || path.extname(filePath).toLowerCase() === '.jpg') {
-                    if (MMCQLconfig.debug.show_Files_Processing) {
+                    if (MMAQLconfig.debug.show_Files_Processing) {
                         console.log(`[${modShortName}] Processing file:`, filePath);
                     }
                     imageRouter.addRoute(`/files/quest/icon/${path.basename(filePath, path.extname(filePath))}`, filePath);

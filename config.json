@@ -1,7 +1,6 @@
 {
 	"debug" : {
-		"show_All_Categories_And_Weapons_In_Them" : false,
-		"show_All_Categories_And_Weapon_Parts_In_Them" : false,
+		"show_All_Categories_And_Things_In_Them" : false,
 		"show_Quest_Ids_Set_By_Code" : false,
 		"show_Weapons_And_Parts_Being_Replaced_In_Quests" : false,
 		"show_Equipment_Being_Replaced_In_Quests" : false,
