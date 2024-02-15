@@ -16,9 +16,10 @@ class MMAQL implements IPostDBLoadMod {
 
 	public mod: string;
 	public modShortName:    string;
-	public weaponArrays: Record<string, string[]> = {};
-	public weaponPartsAndMods: Record<string, string[]> = {};
+	public weaponsLists: Record<string, string[]> = {};
+	public weaponPartsAndModsLists: Record<string, string[]> = {};
 	public equipmentLists: Record<string, string[]> = {};
+	public ammoLists: Record<string, string[]> = {};
 	public questConfigs: {
 		questsItemCounterMultipliers: Record<string, number>,
 		questsKillsCounterMultipliers: Record<string, number>,
@@ -35,7 +36,7 @@ class MMAQL implements IPostDBLoadMod {
 	public logger: ILogger;
 
 	constructor() {
-		this.mod = "MusicManiac-MusicManiacAdvancedQuestLoader";
+		this.mod = "MusicManiac-MusicManiacAdvancedQuestAndTradersLoader";
 		this.modShortName = "MMAQL";
 	}
 
@@ -83,16 +84,16 @@ class MMAQL implements IPostDBLoadMod {
 		];
 
 		weaponCategories.forEach(category => {
-			this.weaponArrays[category] = [];
+			this.weaponsLists[category] = [];
 		});
 
-		const weaponPartsAndModsCategories = [
+		const weaponPartsAndModsListsCategories = [
 			"scopes30mm",
 			"flashlights", "tacticalComboDevices"
 		];
 
-		weaponPartsAndModsCategories.forEach(category => {
-			this.weaponPartsAndMods[category] = [];
+		weaponPartsAndModsListsCategories.forEach(category => {
+			this.weaponPartsAndModsLists[category] = [];
 		});
 
 		const equipmentsCategories = [
@@ -103,179 +104,286 @@ class MMAQL implements IPostDBLoadMod {
 			this.equipmentLists[category] = [];
 		});
 
+		const ammoCategories = [
+			"ammo762x25", "ammo9x18", "ammo9x19", "ammo9x21", "ammo357", "ammo45",
+			"ammo46x30", "ammo57x28", "ammo545x39", "ammo556x45", "ammo68x51", "ammo300", "ammo762x39",
+			"ammo762x51", "ammo762x54", "ammo338", "ammo9x39", "ammo366", "ammo127x55", "ammo12x70", "ammo20x70", "ammo23x73",
+			"ammoPistols", "ammoRevolvers", "ammoSMGs", "ammoAssaultRifles", "ammoAssaultCarbines", "ammoLMGs",  "ammoDMRs", "ammoSniperRifles", "ammoShotguns",
+			"allAmmo"
+		];
+		
+		ammoCategories.forEach(category => {
+			this.ammoLists[category] = [];
+		});
+
 		this.parseItemsDatabase(itemDB);
 
 		if (MMAQLconfig.debug.show_All_Categories_And_Things_In_Them) {
 			weaponCategories.forEach(category => {
-				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.weaponArrays[category])}`);
+				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.weaponsLists[category])}`);
 			});
 	
-			weaponPartsAndModsCategories.forEach(category => {
-				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.weaponPartsAndMods[category])}`);
+			weaponPartsAndModsListsCategories.forEach(category => {
+				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.weaponPartsAndModsLists[category])}`);
 			});
 	
 			equipmentsCategories.forEach(category => {
 				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.equipmentLists[category])}`);
 			});
+
+			ammoCategories.forEach(category => {
+				this.logger.info(`Items in category ${category}: ${JSON.stringify(this.ammoLists[category])}`);
+			});
 		}     
 	}
 
+	public parseChambersForAmmo(itemDB, itemID, ammoCategoryToAddTo) {
+		const item = itemDB[itemID];
+		if (item?._props?.Chambers && item._props.Chambers.length > 0) {
+			item._props.Chambers.forEach((chamber) => {
+				if (chamber?._props?.filters[0]?.Filter) {
+					const filters = chamber._props.filters[0].Filter;
+					filters.forEach((filter) => {
+						if (!this.ammoLists[ammoCategoryToAddTo].includes(filter)) {
+							this.ammoLists[ammoCategoryToAddTo].push(filter);
+						}
+					});
+				}
+			});
+		} else if (item?._props?.Slots) {
+			const magazineSlot = item._props.Slots.find(slot => slot._name == "mod_magazine");
+			const filters = magazineSlot._props.filters[0].Filter;
+			for (const filter of filters) {
+				const magazine = itemDB[filter];
+				const cartridges = magazine._props.Cartridges[0]._props.filters[0].Filter;
+				for (const ammo of cartridges) {
+					if (!this.ammoLists[ammoCategoryToAddTo].includes(ammo)) {
+						this.ammoLists[ammoCategoryToAddTo].push(ammo);
+					}
+				}
+			}
+		}
+	}
+
 	public parseItemsDatabase(itemDB) {
-		this.weaponPartsAndMods.scopes30mm = itemDB["5bfebc5e0db834001a6694e5"]._props.Slots[0]._props.filters[0].Filter; // grab all 30mm scopes from M700 30mm integral ring scope mount
+		this.weaponPartsAndModsLists.scopes30mm = itemDB["5bfebc5e0db834001a6694e5"]._props.Slots[0]._props.filters[0].Filter; // grab all 30mm scopes from M700 30mm integral ring scope mount
 
 		for (let item in itemDB) {
-			if (itemDB[item]._type != "Node") {
+			if (itemDB[item]._type == "Item") {
 				const itemId = itemDB[item]._id;
 				if (itemDB[item]._props.hasOwnProperty("ammoCaliber")) {
 					const caliber = itemDB[item]._props.ammoCaliber;
 					if (caliber == "Caliber30x29" || caliber == "Caliber40x46" || itemId == "5ae083b25acfc4001a5fc702") {
 						this.logger.info(`[${this.modShortName}] skipping item ${itemId} (its not important to this mod)`);
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.PISTOL)) {
-						this.weaponArrays.pistols.push(itemId);
+						this.weaponsLists.pistols.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoPistols');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber762x25TT") {
-							this.weaponArrays.pistols762x25.push(itemId);
+							this.weaponsLists.pistols762x25.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x25');
 						} else if (caliber == "Caliber9x18PM") {
-							this.weaponArrays.pistols9x18.push(itemId);
+							this.weaponsLists.pistols9x18.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x18');
 						} else if (caliber == "Caliber9x19PARA") {
-							this.weaponArrays.pistols9x19.push(itemId);
+							this.weaponsLists.pistols9x19.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x19');
 						} else if (caliber == "Caliber9x21") {
-							this.weaponArrays.pistols9x21.push(itemId);
+							this.weaponsLists.pistols9x21.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x21');
 						} else if (caliber == "Caliber1143x23ACP") {
-							this.weaponArrays.pistols45.push(itemId);
+							this.weaponsLists.pistols45.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo45');
 						} else if (caliber == "Caliber57x28") {
-							this.weaponArrays.pistols57x28.push(itemId);
+							this.weaponsLists.pistols57x28.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo57x28');
 						} else {
 							this.logger.error(`[${this.modShortName}] pistol ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.SMG)) {
-						this.weaponArrays.SMGs.push(itemId);
+						this.weaponsLists.SMGs.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoSMGs');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber762x25TT") {
-							this.weaponArrays.SMGs762x25.push(itemId);
+							this.weaponsLists.SMGs762x25.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x25');
 						} else if (caliber == "Caliber9x18PM" || caliber == "Caliber9x18PMM") {
-							this.weaponArrays.SMGs9x18.push(itemId);
+							this.weaponsLists.SMGs9x18.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x18');
 						} else if (caliber == "Caliber9x19PARA") {
-							this.weaponArrays.SMGs9x19.push(itemId);
+							this.weaponsLists.SMGs9x19.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x19');
 						} else if (caliber == "Caliber9x21") {
-							this.weaponArrays.SMGs9x21.push(itemId);
+							this.weaponsLists.SMGs9x21.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x21');
 						} else if (caliber == "Caliber1143x23ACP") {
-							this.weaponArrays.SMGs45.push(itemId);
+							this.weaponsLists.SMGs45.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo45');
 						} else if (caliber == "Caliber57x28") {
-							this.weaponArrays.SMGs57x28.push(itemId);
+							this.weaponsLists.SMGs57x28.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo57x28');
 						} else if (caliber == "Caliber46x30") {
-							this.weaponArrays.SMGs46x30.push(itemId);
+							this.weaponsLists.SMGs46x30.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo46x30');
 						} else {
 							this.logger.error(`[${this.modShortName}] SMG ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.REVOLVER)) {
-						this.weaponArrays.revolvers.push(itemId);
+						this.weaponsLists.revolvers.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoRevolvers');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber9x19PARA") {
-							this.weaponArrays.revolvers9x19.push(itemId);
+							this.weaponsLists.revolvers9x19.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x19');
 						} else if (caliber == "Caliber127x55") {
-							this.weaponArrays.revolvers127x55.push(itemId);
+							this.weaponsLists.revolvers127x55.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo127x55');
 						} else if (caliber == "Caliber9x33R") {
-							this.weaponArrays.revolvers357.push(itemId);
+							this.weaponsLists.revolvers357.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo357');
 						} else if (caliber == "Caliber12g") {
-							this.weaponArrays.revolvers12x70.push(itemId);
+							this.weaponsLists.revolvers12x70.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo12x70');
 						} else {
 							this.logger.error(`[${this.modShortName}] revolver ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.ASSAULT_CARBINE)) {
-						this.weaponArrays.assaultCarbines.push(itemId);
+						this.weaponsLists.assaultCarbines.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoAssaultCarbines');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber545x39") {
-							this.weaponArrays.assaultCarbines545x39.push(itemId);
+							this.weaponsLists.assaultCarbines545x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo545x39');
 						} else if (caliber == "Caliber556x45NATO") {
-							this.weaponArrays.assaultCarbines556x45.push(itemId);
+							this.weaponsLists.assaultCarbines556x45.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo556x45');
 						} else if (caliber == "Caliber762x39") {
-							this.weaponArrays.assaultCarbines762x39.push(itemId);
+							this.weaponsLists.assaultCarbines762x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x39');
 						} else if (caliber == "Caliber762x51") {
-							this.weaponArrays.assaultCarbines762x51.push(itemId);
+							this.weaponsLists.assaultCarbines762x51.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x51');
 						} else if (caliber == "Caliber762x54R") {
-							this.weaponArrays.assaultCarbines762x54.push(itemId);
+							this.weaponsLists.assaultCarbines762x54.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x54');
 						} else if (caliber == "Caliber9x39") {
-							this.weaponArrays.assaultCarbines9x39.push(itemId);
+							this.weaponsLists.assaultCarbines9x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x39');
 						} else if (caliber == "Caliber366TKM") {
-							this.weaponArrays.assaultCarbines366.push(itemId);
+							this.weaponsLists.assaultCarbines366.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo366');
 						} else {
 							this.logger.error(`[${this.modShortName}] assault carbine ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.ASSAULT_RIFLE)) {
-						this.weaponArrays.assaultRifles.push(itemId);
+						this.weaponsLists.assaultRifles.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoAssaultRifles');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber545x39") {
-							this.weaponArrays.assaultRifles545x39.push(itemId);
+							this.weaponsLists.assaultRifles545x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo545x39');
 						} else if (caliber == "Caliber556x45NATO") {
-							this.weaponArrays.assaultRifles556x45.push(itemId);
+							this.weaponsLists.assaultRifles556x45.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo556x45');
 						} else if (caliber == "Caliber762x35") {
-							this.weaponArrays.assaultRifles300.push(itemId);
+							this.weaponsLists.assaultRifles300.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo300');
 						} else if (caliber == "Caliber762x39") {
-							this.weaponArrays.assaultRifles762x39.push(itemId);
+							this.weaponsLists.assaultRifles762x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x39');
 						} else if (caliber == "Caliber762x51") {
-							this.weaponArrays.assaultRifles762x51.push(itemId);
+							this.weaponsLists.assaultRifles762x51.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x51');
 						} else if (caliber == "Caliber9x39") {
-							this.weaponArrays.assaultRifles9x39.push(itemId);
+							this.weaponsLists.assaultRifles9x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x39');
 						} else if (caliber == "Caliber127x55") {
-							this.weaponArrays.assaultRifles127x55.push(itemId);
+							this.weaponsLists.assaultRifles127x55.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo127x55');
 						} else if (caliber == "Caliber366TKM") {
-							this.weaponArrays.assaultRifles366.push(itemId);
+							this.weaponsLists.assaultRifles366.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo366');
 						} else {
 							this.logger.error(`[${this.modShortName}] assault rifle ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.MACHINE_GUN)) {
-						this.weaponArrays.LMGs.push(itemId);
+						this.weaponsLists.LMGs.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoLMGs');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber545x39") {
-							this.weaponArrays.LMGs545x39.push(itemId);
+							this.weaponsLists.LMGs545x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo545x39');
 						} else if (caliber == "Caliber762x39") {
-							this.weaponArrays.LMGs762x39.push(itemId);
+							this.weaponsLists.LMGs762x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x39');
 						} else if (caliber == "Caliber762x54R") {
-							this.weaponArrays.LMGs762x54.push(itemId);
+							this.weaponsLists.LMGs762x54.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x54');
 						} else {
 							this.logger.error(`[${this.modShortName}] LMG ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.MARKSMAN_RIFLE)) {
-						this.weaponArrays.DMRs.push(itemId);
+						this.weaponsLists.DMRs.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoDMRs');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber86x70") {
-							this.weaponArrays.DMRs338.push(itemId);
+							this.weaponsLists.DMRs338.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo338');
 						} else if (caliber == "Caliber762x51") {
-							this.weaponArrays.DMRs762x51.push(itemId);
+							this.weaponsLists.DMRs762x51.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x51');
 						} else if (caliber == "Caliber762x54R") {
-							this.weaponArrays.DMRs762x54.push(itemId);
+							this.weaponsLists.DMRs762x54.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x54');
 						} else if (caliber == "Caliber9x39") {
-							this.weaponArrays.DMRs9x39.push(itemId);
+							this.weaponsLists.DMRs9x39.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo9x39');
 						} else {
 							this.logger.error(`[${this.modShortName}] DMR ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.SNIPER_RIFLE)) {
-						this.weaponArrays.sniperRifles.push(itemId);
+						this.weaponsLists.sniperRifles.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoSniperRifles');
 						if (caliber == "Caliber86x70") {
-							this.weaponArrays.sniperRifles338.push(itemId);
+							this.weaponsLists.sniperRifles338.push(itemId);
 						} else if (caliber == "Caliber762x51") {
-							this.weaponArrays.sniperRifles762x51.push(itemId);
+							this.weaponsLists.sniperRifles762x51.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x51');
 						} else if (caliber == "Caliber762x54R") {
-							this.weaponArrays.sniperRifles762x54.push(itemId);
+							this.weaponsLists.sniperRifles762x54.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x54');
 						} else if (caliber == "Caliber366TKM") {
-							this.weaponArrays.sniperRifles366.push(itemId);
+							this.weaponsLists.sniperRifles366.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo366');
 						} else {
 							this.logger.error(`[${this.modShortName}] sniper rifle ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					} else if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.SHOTGUN)) {
-						this.weaponArrays.shotguns.push(itemId);
+						this.weaponsLists.shotguns.push(itemId);
+						this.parseChambersForAmmo(itemDB, itemId, 'ammoShotguns');
+						this.parseChambersForAmmo(itemDB, itemId, 'allAmmo');
 						if (caliber == "Caliber12g") {
-							this.weaponArrays.shotguns12x70.push(itemId);
+							this.weaponsLists.shotguns12x70.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo12x70');
 						} else if (caliber == "Caliber20g") {
-							this.weaponArrays.shotguns20x70.push(itemId);
+							this.weaponsLists.shotguns20x70.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo20x70');
 						} else if (caliber == "Caliber23x75") {
-							this.weaponArrays.shotguns23x73.push(itemId);
+							this.weaponsLists.shotguns23x73.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo23x73');
 						} else if (caliber == "Caliber762x54R") {
-							this.weaponArrays.shotguns762x54.push(itemId);
+							this.weaponsLists.shotguns762x54.push(itemId);
+							this.parseChambersForAmmo(itemDB, itemId, 'ammo762x54');
 						} else {
 							this.logger.error(`[${this.modShortName}] sniper rifle ${itemId} doesn't have a matching caliber in weaponCategories`);
 						}
 					}
 				}
 				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.FLASHLIGHT)) {
-					this.weaponPartsAndMods.flashlights.push(itemId);
+					this.weaponPartsAndModsLists.flashlights.push(itemId);
 				}
 				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.TACTICAL_COMBO )) {
-					this.weaponPartsAndMods.tacticalComboDevices.push(itemId);
+					this.weaponPartsAndModsLists.tacticalComboDevices.push(itemId);
 				}
 			}
 		}
@@ -331,9 +439,10 @@ class MMAQL implements IPostDBLoadMod {
 	public importQuests(database, config, directoryPath) {
 		let questCount = 0
 		let questConfigs = this.questConfigs;
-		let weaponArrays = this.weaponArrays;
-		let weaponPartsAndMods = this.weaponPartsAndMods;
+		let weaponsLists = this.weaponsLists;
+		let weaponPartsAndModsLists = this.weaponPartsAndModsLists;
 		let equipmentLists = this.equipmentLists;
+		let ammoLists = this.ammoLists;
 		let logger = this.logger;
 		let modShortName = this.modShortName;
 		let parseHandoverItems = this.parseHandoverItems;
@@ -388,19 +497,19 @@ class MMAQL implements IPostDBLoadMod {
 												cultistsIncluded = true;
 											}
 											if (Array.isArray(subConditionData._props.weapon)) {
-												parseWeapons(subConditionData, weaponArrays, logger, modShortName, questContent, nextConditionData, counterElimination);
+												parseWeapons(subConditionData, weaponsLists, logger, modShortName, questContent, nextConditionData, counterElimination);
 												if (subConditionData._props.weapon.length === 0) {
 													logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weapon array is empty!`);
 												}
 											}
 											if (Array.isArray(subConditionData._props.weaponModsInclusive)) {
-												parseWeaponModsInclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+												parseWeaponModsInclusive(subConditionData, weaponPartsAndModsLists, logger, modShortName, questContent, nextConditionData, counterElimination);
 												if (subConditionData._props.weaponModsInclusive.length === 0) {
 													logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weaponModsInclusive array is empty!`);
 												}
 											}
 											if (Array.isArray(subConditionData._props.weaponModsExclusive)) {
-												parseWeaponModsExclusive(subConditionData, weaponPartsAndMods, logger, modShortName, questContent, nextConditionData, counterElimination);
+												parseWeaponModsExclusive(subConditionData, weaponPartsAndModsLists, logger, modShortName, questContent, nextConditionData, counterElimination);
 												if (subConditionData._props.weaponModsExclusive.length === 0) {
 													logger.error(`[${modShortName}] Quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} weaponModsExclusive array is empty!`);
 												}
@@ -448,7 +557,7 @@ class MMAQL implements IPostDBLoadMod {
 										}
 									}
 									if (Array.isArray(nextConditionData._props.target)) {
-										parseHandoverItems(nextConditionData, weaponPartsAndMods, logger, modShortName, questContent, equipmentLists, weaponArrays);
+										parseHandoverItems(nextConditionData, logger, modShortName, questContent, weaponPartsAndModsLists, equipmentLists, weaponsLists, ammoLists);
 									}
 								}
 							}
@@ -537,27 +646,33 @@ class MMAQL implements IPostDBLoadMod {
 		}
 	}
 
-	public parseHandoverItems(nextConditionData: any, weaponPartsAndMods: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, equipmentLists: Record<string, string[]>, weaponArrays: Record<string, string[]>) {
+	public parseHandoverItems(nextConditionData: any, logger: ILogger, modShortName: string, questContent: any, weaponPartsAndModsLists: Record<string, string[]>, equipmentLists: Record<string, string[]>, weaponsLists: Record<string, string[]>, ammoLists: Record<string, string[]>) {
 		nextConditionData._props.target = nextConditionData._props.target.reduce((acc, category) => {
 			// Check for categories across all our categories groups
-			if (weaponPartsAndMods.hasOwnProperty(category)) {
-				// Concatenate the corresponding array from weaponPartsAndMods
+			if (weaponPartsAndModsLists.hasOwnProperty(category)) {
+				// Concatenate the corresponding array from weaponPartsAndModsLists
 				if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
 					logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
 				}
-				return acc.concat(weaponPartsAndMods[category]);
+				return acc.concat(weaponPartsAndModsLists[category]);
 			} else if (equipmentLists.hasOwnProperty(category)) {
 				// Concatenate the corresponding array from equipmentLists
 				if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
 					logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
 				}
 				return acc.concat(equipmentLists[category]);
-			} else if (weaponArrays.hasOwnProperty(category)) {
-				// Concatenate the corresponding array from weaponArrays
+			} else if (weaponsLists.hasOwnProperty(category)) {
+				// Concatenate the corresponding array from weaponsLists
 				if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
 					logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
 				}
-				return acc.concat(weaponArrays[category]);
+				return acc.concat(weaponsLists[category]);
+			} else if (ammoLists.hasOwnProperty(category)) {
+				// Concatenate the corresponding array from ammoLists
+				if (MMAQLconfig.debug.show_Equipment_Being_Replaced_In_Quests) {
+					logger.info(`[${modShortName}] replacing \`${category}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` with array`);
+				}
+				return acc.concat(ammoLists[category]);
 			} else {
 				// If not found, concatenate the original id
 				return acc.concat(category);
@@ -568,15 +683,15 @@ class MMAQL implements IPostDBLoadMod {
 		}
 	}
 
-	public parseWeapons(subConditionData: any, weaponArrays: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
+	public parseWeapons(subConditionData: any, weaponsLists: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
 		subConditionData._props.weapon = subConditionData._props.weapon.reduce((acc, weaponId) => {
-			// Check if the weaponId is a key in weaponArrays
-			if (weaponArrays.hasOwnProperty(weaponId)) {
-				// Concatenate the corresponding array from weaponArrays
+			// Check if the weaponId is a key in weaponsLists
+			if (weaponsLists.hasOwnProperty(weaponId)) {
+				// Concatenate the corresponding array from weaponsLists
 				if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
 					logger.info(`[${modShortName}] replacing \`${weaponId}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
 				}
-				return acc.concat(weaponArrays[weaponId]);
+				return acc.concat(weaponsLists[weaponId]);
 			} else {
 				// If not found, concatenate the original weaponId
 				return acc.concat(weaponId);
@@ -587,13 +702,13 @@ class MMAQL implements IPostDBLoadMod {
 		}
 	}
 
-	public parseWeaponModsExclusive(subConditionData: any, weaponPartsAndMods: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
+	public parseWeaponModsExclusive(subConditionData: any, weaponPartsAndModsLists: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
 		const isCorrectFormat = subConditionData._props.weaponModsExclusive.every(Array.isArray);
 		if (!isCorrectFormat) {
 			subConditionData._props.weaponModsExclusive = subConditionData._props.weaponModsExclusive.reduce((acc, weaponMods) => {
 				// Check if the weaponMods is a key in weaponModsExclusive
-				if (weaponPartsAndMods.hasOwnProperty(weaponMods)) {
-					const modsArray = weaponPartsAndMods[weaponMods];
+				if (weaponPartsAndModsLists.hasOwnProperty(weaponMods)) {
+					const modsArray = weaponPartsAndModsLists[weaponMods];
 					// Concatenate each ID into a separate array
 					const separatedArrays = modsArray.map(modId => [modId]);
 					if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
@@ -612,12 +727,12 @@ class MMAQL implements IPostDBLoadMod {
 		}
 	}
 
-	public parseWeaponModsInclusive(subConditionData: any, weaponPartsAndMods: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
+	public parseWeaponModsInclusive(subConditionData: any, weaponPartsAndModsLists: Record<string, string[]>, logger: ILogger, modShortName: string, questContent: any, nextConditionData: any, counterElimination: number) {
 		const isCorrectFormat = subConditionData._props.weaponModsInclusive.every(Array.isArray);
 		if (!isCorrectFormat) {
 			subConditionData._props.weaponModsInclusive = subConditionData._props.weaponModsInclusive.reduce((acc, weaponMods) => {
-				if (weaponPartsAndMods.hasOwnProperty(weaponMods)) {
-					const modsArray = weaponPartsAndMods[weaponMods];
+				if (weaponPartsAndModsLists.hasOwnProperty(weaponMods)) {
+					const modsArray = weaponPartsAndModsLists[weaponMods];
 					const separatedArrays = modsArray.map(modId => [modId]);
 					if (MMAQLconfig.debug.show_Weapons_And_Parts_Being_Replaced_In_Quests) {
 						logger.info(`[${modShortName}] replacing \`${weaponMods}\` in quest \`${questContent._id}\` subCondition \`${nextConditionData._props.id}\` counter condition #${counterElimination} with array`);
