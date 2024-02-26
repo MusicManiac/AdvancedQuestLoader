@@ -89,7 +89,11 @@ class MMAQL implements IPostDBLoadMod {
 
 		const weaponPartsAndModsListsCategories = [
 			"scopes30mm",
-			"flashlights", "tacticalComboDevices"
+
+			"auxiliaries", "bipods", "foregrips", "flashlights", "lasers", "tacticalComboDevices", "flashhidersAndBrakes", "muzzles", "suppressors",
+			"assaultScopes", "collimators", "compactCollimators", "ironSights", "optics", "specialScopes",
+			"chargingHandles", "magazines", "mounts", "stocks",
+			"barrels", "gasBlocks", "handguards", "pistolGrips", "receivers"
 		];
 
 		weaponPartsAndModsListsCategories.forEach(category => {
@@ -167,6 +171,9 @@ class MMAQL implements IPostDBLoadMod {
 
 	public parseItemsDatabase(itemDB) {
 		this.weaponPartsAndModsLists.scopes30mm = itemDB["5bfebc5e0db834001a6694e5"]._props.Slots[0]._props.filters[0].Filter; // grab all 30mm scopes from M700 30mm integral ring scope mount
+
+		this.weaponPartsAndModsLists.lasers.push("5c079ed60db834001a66b372"); // TT DLP Tactical Precision LAM-module
+		this.weaponPartsAndModsLists.lasers.push("5cc9c20cd7f00c001336c65d"); // NcSTAR Tactical blue laser LAM-module
 
 		for (let item in itemDB) {
 			if (itemDB[item]._type == "Item") {
@@ -379,11 +386,77 @@ class MMAQL implements IPostDBLoadMod {
 						}
 					}
 				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.AUXILARY_MOD)) {
+					this.weaponPartsAndModsLists.auxiliaries.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.BIPOD)) {
+					this.weaponPartsAndModsLists.bipods.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.FOREGRIP)) {
+					this.weaponPartsAndModsLists.foregrips.push(itemId);
+				}
 				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.FLASHLIGHT)) {
 					this.weaponPartsAndModsLists.flashlights.push(itemId);
 				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.LIGHT_LASER_DESIGNATOR)) {
+					this.weaponPartsAndModsLists.lasers.push(itemId);
+				}
 				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.TACTICAL_COMBO )) {
 					this.weaponPartsAndModsLists.tacticalComboDevices.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.FLASH_HIDER)) {
+					this.weaponPartsAndModsLists.flashhidersAndBrakes.push(itemId);
+				}
+				if (itemDB[item]._parent === "550aa4dd4bdc2dc9348b4569") {
+					this.weaponPartsAndModsLists.muzzles.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.SILENCER)) {
+					this.weaponPartsAndModsLists.suppressors.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.ASSAULT_SCOPE)) {
+					this.weaponPartsAndModsLists.assaultScopes.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.COLLIMATOR)) {
+					this.weaponPartsAndModsLists.collimators.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.COMPACT_COLLIMATOR)) {
+					this.weaponPartsAndModsLists.compactCollimators.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.IRON_SIGHT)) {
+					this.weaponPartsAndModsLists.ironSights.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.OPTIC_SCOPE)) {
+					this.weaponPartsAndModsLists.optics.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.SPECIAL_SCOPE)) {
+					this.weaponPartsAndModsLists.specialScopes.push(itemId);
+				}
+				if (itemDB[item]._parent === "55818a6f4bdc2db9688b456b") {
+					this.weaponPartsAndModsLists.chargingHandles.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.MAGAZINE)) {
+					this.weaponPartsAndModsLists.magazines.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.MOUNT)) {
+					this.weaponPartsAndModsLists.mounts.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.STOCK)) {
+					this.weaponPartsAndModsLists.stocks.push(itemId);
+				}
+				if (itemDB[item]._parent === "555ef6e44bdc2de9068b457e") {
+					this.weaponPartsAndModsLists.barrels.push(itemId);
+				}
+				if (this.itemHelper.isOfBaseclass(itemId, BaseClasses.GAS_BLOCK)) {
+					this.weaponPartsAndModsLists.gasBlocks.push(itemId);
+				}
+				if (itemDB[item]._parent === "55818a104bdc2db9688b4569") {
+					this.weaponPartsAndModsLists.handguards.push(itemId);
+				}
+				if (itemDB[item]._parent === "55818a684bdc2ddd698b456d") {
+					this.weaponPartsAndModsLists.pistolGrips.push(itemId);
+				}
+				if (itemDB[item]._parent === "55818a304bdc2db5418b457d") {
+					this.weaponPartsAndModsLists.receivers.push(itemId);
 				}
 			}
 		}
